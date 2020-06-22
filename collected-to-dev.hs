@@ -25,6 +25,8 @@ import Data.Aeson
 import Data.Aeson.Lens
 import qualified Data.ByteString.Internal as BS
 import qualified Data.ByteString.Lazy.Internal as LazyBS
+import Data.List.NonEmpty (NonEmpty (..))
+import qualified Data.List.NonEmpty as NonEmpty
 import Data.Maybe
 import Data.Ord
 import Data.Sort
@@ -43,7 +45,7 @@ data DevtoArticle = DevtoArticle
     published :: Bool,
     main_image :: Text,
     canonical_url :: Text,
-    tags :: Maybe [Text],
+    tags :: Maybe (NonEmpty Text),
     series :: Maybe Text,
     body_markdown :: Text
   }
@@ -62,12 +64,16 @@ stripTitleAndFirstImage = do
   _ <- manyTill anyChar $ try $ char ')'
   Text.pack . (before <>) <$> many anyChar
 
+parseTags :: Text -> [Text]
+parseTags =
+  take 4 . filter (not . Text.null) . fmap Text.strip . Text.splitOn ","
+
 collectedToDev :: Config -> CollectedArticle -> Either ParseError DevtoArticle
 collectedToDev Config {..} (title, body, _, url, image, _) =
   DevtoArticle title optPublished image url tags' optSeries . Text.strip
     <$> parse stripTitleAndFirstImage "" body
   where
-    tags' = fmap (fmap Text.strip . Text.splitOn ",") optTags
+    tags' = NonEmpty.nonEmpty =<< parseTags <$> optTags
 
 sixth :: (a, b, c, d, e, f) -> f
 sixth (_, _, _, _, _, f) = f

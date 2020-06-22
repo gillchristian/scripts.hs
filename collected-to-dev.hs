@@ -15,6 +15,7 @@
 
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -210,4 +211,9 @@ main :: IO ()
 main = do
   config <- Opt.execParser opts
   r <- getCollectedArticles config
-  mapM_ (postDevtoArticle config) $ processPosts config r
+  processPosts config r
+    & ( \case
+          [a] -> postDevtoArticle config a
+          [] -> putStrLn "404: Note not found"
+          _ -> putStrLn "500: Found more than one note"
+      )

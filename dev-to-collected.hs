@@ -108,7 +108,7 @@ postCollectedArticle Config {..} (title, postBody) = do
         & header "Authorization" .~ [email <> " " <> collectednotesToken]
         & header "Content-Type" .~ ["application/json"]
         & header "Accept" .~ ["application/json"]
-    url = "https://collectednotes.com/sites/57/notes"
+    url = "https://collectednotes.com/sites/" <> siteId <> "/notes"
     body = object ["note" .= object ["body" .= postBody, "visibility" .= ("private" :: Text)]]
     successMsg r =
       "✓ Note created: ("
@@ -116,7 +116,8 @@ postCollectedArticle Config {..} (title, postBody) = do
         <> ")\n"
 
 data Config = Config
-  { email :: BS.ByteString,
+  { siteId :: String,
+    email :: BS.ByteString,
     collectednotesToken :: BS.ByteString,
     devtoApiKey :: BS.ByteString
   }
@@ -126,6 +127,11 @@ configP :: Opt.Parser Config
 configP =
   Config
     <$> Opt.strOption
+      ( Opt.long "site-id"
+          <> Opt.metavar "SITE_ID"
+          <> Opt.help "CollectedNotes notes site ID"
+      )
+    <*> Opt.strOption
       ( Opt.long "email"
           <> Opt.metavar "EMAIL"
           <> Opt.help "Your CollectedNotes email"

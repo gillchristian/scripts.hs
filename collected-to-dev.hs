@@ -105,9 +105,9 @@ getCollectedArticles Config {..} =
   getWith reqConfg url
   where
     -- curl -H "Authorization: your@email.com your-secret-token" \
-    -- -H "Accept: application/json" \
-    -- -H "Content-Type: application/json" \
-    -- https://collectednotes.com/sites/1/notes
+    --   -H "Accept: application/json" \
+    --   -H "Content-Type: application/json" \
+    --   https://collectednotes.com/sites/1/notes
     reqConfg =
       defaults
         & header "Authorization" .~ [email <> " " <> collectednotesToken]
@@ -123,7 +123,7 @@ postDevtoArticle Config {..} article = do
   where
     -- curl -X POST -H "Content-Type: application/json" \
     --   -H "api-key: API_KEY" \
-    --   -d '{"article":{"title":"Title","body_markdown":"Body","published":false,"tags":["discuss", "javascript"]}}' \
+    --   -d '{"article":{"title":"Title","body_markdown":"Body","published":true,"tags":["discuss", "javascript"]}}' \
     --   https://dev.to/api/articles
     reqConfg =
       defaults

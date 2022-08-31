@@ -1,0 +1,5 @@
+- [ ] `obsidian-to-blogs`: Publish from Obsidian to CollectedNotes & dev.to?
+- [ ] `collected-to-dev`: Check all notes from CollectedNotes that are missing in dev.to
+- [ ] `collected-to-dev`: Should it publish directly?
+- [ ] Document what some of the functios do (eg. what the hell is `sixth` used for?)
+- [ ] `collected-to-dev`: Dry run showing what will be posted 

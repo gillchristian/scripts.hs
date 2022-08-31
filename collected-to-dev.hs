@@ -73,14 +73,14 @@ collectedToDev Config {..} (title, body, _, url, image, _) =
   DevtoArticle title optPublished image url tags' optSeries . Text.strip
     <$> parse stripTitleAndFirstImage "" body
   where
-    tags' = NonEmpty.nonEmpty =<< parseTags <$> optTags
+    tags' = NonEmpty.nonEmpty . parseTags =<< optTags
 
 sixth :: (a, b, c, d, e, f) -> f
 sixth (_, _, _, _, _, f) = f
 
 processPosts :: Config -> Response LazyBS.ByteString -> [DevtoArticle]
 processPosts config =
-  mapMaybe eitherToMaybe . fmap (collectedToDev config) . findNoteToPublish . extract
+  mapMaybe (eitherToMaybe . collectedToDev config) . findNoteToPublish . extract
   where
     findNoteToPublish = case optNote config of
       Just note -> filter ((note ==) . sixth)
@@ -92,7 +92,7 @@ type CollectedArticle =
     Text, -- visibility ("public" | "private")
     Text, -- url
     Text, -- poster (picture)
-    Text -- path (ie. slug)
+    Text  -- path (ie. slug)
   )
 
 extract :: Response LazyBS.ByteString -> [CollectedArticle]

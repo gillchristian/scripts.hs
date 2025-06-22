@@ -1,0 +1,148 @@
+/// <reference types="./lib.deno.d.ts" />
+
+/**
+ * Save links to ReadWise Reader
+ *
+ * ```
+ * $ TOKEN="<...>" deno run --allow-env --allow-read --allow-write --allow-net reader-importer.ts
+ * ```
+ *
+ * Expects a list of Reader links to be exported on `resources.pending.json`.
+ *
+ * ```ts
+ * type ReaderItem = {
+ *   url: string;
+ *   title: string;
+ *   tags: string[];
+ *   location: 'new' | 'archive' | 'later' | 'feed';
+ *   saved_using?: string;
+ *   description?: string;
+ *   author?: string;
+ *   summary?: string;
+ *   image_url?: string;
+ * }
+ * ```
+ *
+ * Saves one link at a time and then waits 5s before saving the next, since the
+ * Reader API has a 20 request per minute limit.
+ *
+ * On each save `resources.pending.json` is updated and the progress is saved to
+ * `resources.saved.json`, this allows to continue if the process is
+ * interrumpted.
+ *
+ * <https://readwise.io/reader_api/>
+ *
+ * The Readwise Access Token (<https://readwise.io/access_token>) should be
+ * provided in a `TOKEN` env var.
+ */
+type ReaderItem = {
+  url: string;
+  title: string;
+  tags: string[];
+  location: "new" | "archive" | "later" | "feed";
+  saved_using?: string;
+  description?: string;
+  author?: string;
+  summary?: string;
+  image_url?: string;
+};
+
+const saveToReader = (readerPayload: ReaderItem) =>
+  Promise.resolve(readerPayload)
+    .then((body) => JSON.stringify(body))
+    .then((body) =>
+      fetch(
+        "https://readwise.io/api/v3/save/",
+        {
+          method: "POST",
+          body,
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Token ${Deno.env.get("TOKEN")}`,
+          },
+        },
+      )
+    )
+    .then((res) => res.ok ? res.headers : Promise.reject(res.text()));
+
+const savePending = (body: ReaderItem[]) =>
+  Deno.writeTextFile("resources.pending.json", JSON.stringify(body, null, 2));
+
+const readPending = (): Promise<ReaderItem[]> =>
+  Deno.readTextFile("resources.pending.json")
+    .then((content) => JSON.parse(content))
+    .catch(() => []);
+
+const saveSaved = (body: ReaderItem[]) =>
+  Deno.writeTextFile("resources.saved.json", JSON.stringify(body, null, 2));
+
+const readSaved = (): Promise<ReaderItem[]> =>
+  Deno.readTextFile("resources.saved.json")
+    .then((content) => JSON.parse(content))
+    .catch(() => []);
+
+const wait = (s: number) => new Promise((res) => setTimeout(res, s * 1000));
+
+const formatDuration = (ms: number) => {
+  const s = ms / 1000;
+
+  if (s < 60) {
+    return `${Math.floor(ms / 1000)}s`;
+  }
+
+  const m = s / 60;
+
+  const s_ = Math.floor(s % 60);
+  const m_ = Math.floor(m);
+
+  return s_ > 0 ? `${m_}m ${s_}s` : `${m_}m`;
+};
+
+const saveNext = async (
+  count: number,
+  [next, ...pending]: ReaderItem[],
+  saved: ReaderItem[],
+): Promise<[number, number]> => {
+  if (!next) {
+    return [Date.now(), count];
+  }
+
+  try {
+    await saveToReader(next);
+
+    console.log(`[Saved] ${next.title}`);
+
+    const saved_ = [...saved, next];
+
+    await savePending(pending);
+    await saveSaved(saved_);
+    await wait(5);
+
+    return saveNext(count + 1, pending, saved_);
+  } catch (err) {
+    console.error("Failed to save", next.title);
+    console.error(err);
+    Deno.exit(1);
+  }
+};
+
+if (!Deno.env.get("TOKEN")) {
+  console.error("Missing TOKEN");
+  console.error("See <https://readwise.io/access_token>");
+  Deno.exit(1);
+}
+
+const started = Date.now();
+
+Promise.all([readPending(), readSaved()])
+  .then(([pending, saved]) => saveNext(0, pending, saved))
+  .then(([finished, count]) => {
+    console.log(
+      `Saved ${count} links in ${formatDuration(finished - started)}`,
+    );
+  })
+  .catch((err) => {
+    console.error("Failed loop");
+    console.error(err);
+    Deno.exit(1);
+  });
